@@ -203,7 +203,7 @@ Con `-s 127.0.0.1` l'output del primo esempio diventa `Ricevuto risultato dal se
 - **Scadenza**: _DA DEFINIRE_
 - **Form di prenotazione / consegna**: [link](https://forms.gle/vSxksC1DgMVKK3pv5) (Ctrl/Cmd-clic per aprire in una nuova scheda)
 - **Formato**: link al repository GitHub **privato**, con l'utente `correttore-lab-reti` aggiunto come collaboratore in lettura (vedi README)
-- **Risultati**: [link](#) _DA DEFINIRE_ (Ctrl/Cmd-clic per aprire in una nuova scheda)
+- **Risultati**: [link](https://collab-uniba.github.io/correzione_esonero_reti_udp_inf_26-27/aggregate-report.html) (Ctrl/Cmd-clic per aprire in una nuova scheda)
 - **Note**:
    - Una sola consegna per coppia
    - Non è necessario ricompilare il form di consegna dopo aggiornamenti al repository
