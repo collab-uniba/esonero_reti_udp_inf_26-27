@@ -2,17 +2,21 @@
 
 ## Obiettivo
 
-Migrare a **UDP** l'applicazione client/server del primo esonero, in cui il server è un **convertitore di unità di misura**. Il punto di partenza è la soluzione TCP consegnata dalla vostra coppia: protocollo applicativo, conversione e formato dei messaggi restano gli stessi; cambiano il trasporto (datagrammi UDP) e alcuni requisiti del client:
+Migrare a **UDP** l'applicazione client/server del primo esonero, in cui il server è un **convertitore di unità di misura**. Il punto di partenza è la soluzione TCP consegnata dalla vostra coppia: le strutture `conversion_request_t` e `conversion_response_t`, la conversione e il log del server restano gli stessi; cambiano:
 
-- `-s` accetta un **nome** di host (es. `localhost`) oltre a un indirizzo IP, e l'output del client riporta il nome e l'indirizzo IP del server;
-- il client attende la risposta per al massimo `TIMEOUT_SEC` secondi;
+- il trasporto: datagrammi UDP inviati con `sendto()` e ricevuti con `recvfrom()`;
+- `-s`, che accetta un **nome** di host (es. `localhost`) oltre a un indirizzo IP, e la riga di output del client, che riporta il nome e l'indirizzo IP del server;
+- il client, che attende la risposta per al massimo `TIMEOUT_SEC` secondi;
 - client e server **validano i datagrammi** ricevuti (sezione 6).
 
-La specifica è data da tre elementi, da leggere insieme:
+La specifica è data da questo testo, da leggere insieme a:
 
 1. il file [`protocol.h`](client-project/src/protocol.h) (già fornito, **non modificare** le definizioni);
 2. il diagramma di sequenza;
 3. la tabella degli esempi, che fa fede per il formato di input e output.
+
+> [!IMPORTANT]
+> Può svolgere questo esonero solo chi ha consegnato e superato il primo esonero (TCP).
 
 ## 1. Protocollo
 
@@ -112,11 +116,21 @@ server-project [-p port]
 | `-s` | `DEFAULT_SERVER_NAME` |
 | `-p` | `SERVER_PORT` |
 
-Il valore di `-s` può essere un nome di host o un indirizzo IP: il client lo risolve con `gethostbyname()`, che accetta entrambi. Nell'output, il **nome** è la stringa passata con `-s` (o `DEFAULT_SERVER_NAME`), l'**ip** è l'indirizzo risolto. Se la risoluzione fallisce, il client stampa un errore ed esce con codice di uscita diverso da 0.
+Il valore di `-s` può essere un nome di host o un indirizzo IP: il client lo risolve con `gethostbyname()`, che accetta entrambi. La riga di output del client ha la forma
+
+```
+Ricevuto risultato dal server <nome> (ip <ip>). <risultato>
+```
+
+dove `<nome>` è la stringa passata con `-s` (o `DEFAULT_SERVER_NAME`) e `<ip>` è l'indirizzo risolto. Se la risoluzione fallisce, il client stampa un errore ed esce con `EXIT_FAILURE`.
+
+Il client invia la richiesta con `sendto()` e riceve la risposta con `recvfrom()`: **non usate `connect()`** sul socket UDP.
+
+**Codici di uscita**: client e server terminano con le costanti `EXIT_SUCCESS` ed `EXIT_FAILURE` di `<stdlib.h>`, non con valori numerici. Il client esce con `EXIT_SUCCESS` solo quando stampa una riga `Ricevuto risultato dal server ...`, compresi i casi `Simbolo non supportato`, `Grandezze incompatibili` e `Valore non valido`; in tutti gli altri casi esce con `EXIT_FAILURE`. Il testo dei messaggi di errore è libero (stampateli su `stderr`).
 
 ## 5. Timeout (client)
 
-Con UDP il client non ha modo di sapere se il server è in ascolto: senza un timeout, `recvfrom()` resterebbe bloccata per sempre. Subito dopo aver creato il socket, impostate il timeout di ricezione usando **esattamente** questo codice:
+Con UDP il client non ha modo di sapere se il server è in ascolto: senza un timeout, `recvfrom()` resterebbe bloccata per sempre. Subito dopo aver creato il socket, impostate il timeout di ricezione usando **esattamente** questo codice (sostituendo `my_socket` con il nome del vostro socket):
 
 <!-- codice-imposto -->
 ```c
@@ -128,24 +142,24 @@ Con UDP il client non ha modo di sapere se il server è in ascolto: senza un tim
 	setsockopt(my_socket, SOL_SOCKET, SO_RCVTIMEO, (const char *) &timeout, sizeof(timeout));
 ```
 
-Se `recvfrom()` fallisce (timeout scaduto o errore), il client stampa un errore ed esce con codice di uscita diverso da 0.
+Se `recvfrom()` fallisce (timeout scaduto o errore), il client stampa un errore ed esce con `EXIT_FAILURE`.
 
 ## 6. Validazione dei datagrammi
 
 Con UDP chiunque può inviare un datagramma a un socket, di qualsiasi dimensione. Client e server non si fidano di ciò che ricevono:
 
-1. **Server**: un datagramma di dimensione diversa da `sizeof(conversion_request_t)` viene ignorato: nessuna risposta e nessuna riga di log. Il server resta in attesa della richiesta successiva.
-2. **Client**: la risposta deve provenire dallo stesso indirizzo IP **e** dalla stessa porta a cui è stata inviata la richiesta (confrontate l'indirizzo restituito da `recvfrom()` con quello del server).
+1. **Server**: un datagramma di dimensione diversa da `sizeof(conversion_request_t)` viene ignorato: nessuna risposta e nessuna riga di log. Lo stesso vale se `recvfrom()` restituisce un errore. In nessun caso il server termina: resta in attesa della richiesta successiva.
+2. **Client**: la risposta deve provenire dallo stesso indirizzo IP **e** dalla stessa porta a cui è stata inviata la richiesta. Confrontate i campi `sin_addr.s_addr` e `sin_port` dell'indirizzo restituito da `recvfrom()` con quelli del server, non l'intera struttura `sockaddr_in` (su macOS contiene un campo in più, `sin_len`).
 3. **Client**: la risposta deve avere dimensione `sizeof(conversion_response_t)`.
 
-Se la regola 2 o la 3 non è rispettata, il client stampa un errore ed esce con codice di uscita diverso da 0.
+Se la regola 2 o la 3 non è rispettata, il client stampa un errore ed esce con `EXIT_FAILURE`.
 
 > [!TIP]
-> `recvfrom()` scrive al massimo tanti byte quanti ne contiene il buffer: su Linux e macOS un datagramma più lungo viene troncato senza errore. Per accorgervi che un datagramma è troppo lungo, ricevete in un buffer più grande del messaggio atteso e controllate il valore restituito.
+> `recvfrom()` scrive al massimo tanti byte quanti ne contiene il buffer. Con un datagramma più lungo, su Linux e macOS lo tronca senza errore, su Windows restituisce un errore. Per accorgervi che un datagramma è troppo lungo, ricevete in un buffer più grande del messaggio atteso e controllate il valore restituito. Su Windows `recvfrom()` può fallire anche per altri motivi (ad esempio dopo un `sendto()` verso un client che ha già chiuso il socket): per questo il server non deve mai terminare per un errore di `recvfrom()`.
 
 ## 7. Esempi
 
-Server avviato con `server-project`, client avviato con `client-project -r ...` (quindi `-s` vale `localhost`). La colonna **Log server** riporta l'output del server per la stessa richiesta.
+Server avviato con `server-project`, client avviato con `client-project -r ...` (quindi il server è `DEFAULT_SERVER_NAME`, cioè `localhost`). La colonna **Log server** riporta l'output del server per la stessa richiesta.
 
 | `-r` | Output client | Log server |
 |---|---|---|
@@ -164,19 +178,19 @@ Server avviato con `server-project`, client avviato con `client-project -r ...` 
 | `"g kg 0"` | `Ricevuto risultato dal server localhost (ip 127.0.0.1). Valore non valido` | `Richiesta 'g kg 0.00' dal client ip 127.0.0.1` |
 | `"lb kg 1000.01"` | `Ricevuto risultato dal server localhost (ip 127.0.0.1). Valore non valido` | `Richiesta 'lb kg 1000.01' dal client ip 127.0.0.1` |
 
-Se `-r` manca o il suo argomento non è nel formato `"FROM TO valore"` (simbolo più lungo di 3 caratteri, valore non numerico, campi mancanti o in più), il client **non contatta il server**, stampa
+Se `-r` manca o il suo argomento non è nel formato `"FROM TO valore"` (simbolo più lungo di 3 caratteri, valore non numerico, campi mancanti o in più), il client **non risolve il nome e non contatta il server**, stampa
 
 ```
 Uso: client-project [-s server] [-p port] -r "FROM TO valore"
 ```
 
-ed esce con codice di uscita diverso da 0.
+ed esce con `EXIT_FAILURE`.
 
-Con `-s 127.0.0.1` la prima riga diventa `Ricevuto risultato dal server 127.0.0.1 (ip 127.0.0.1). 26.20 mi = 42.16 km`.
+Con `-s 127.0.0.1` l'output del primo esempio diventa `Ricevuto risultato dal server 127.0.0.1 (ip 127.0.0.1). 26.20 mi = 42.16 km`.
 
 > [!WARNING]
 > L'output deve corrispondere **carattere per carattere** a quello degli esempi: lingua italiana, spazi, punteggiatura, due cifre decimali, nessun messaggio aggiuntivo.
-> Se il nome del server non si risolve, la risposta non arriva entro `TIMEOUT_SEC` secondi o non è valida (mittente o dimensione errati, codice di stato sconosciuto), il client stampa un errore ed esce con codice di uscita diverso da 0; in tutti gli altri casi esce con codice 0.
+> Se il nome del server non si risolve, la risposta non arriva entro `TIMEOUT_SEC` secondi o non è valida (mittente o dimensione errati, codice di stato sconosciuto), il client stampa un errore su `stderr` ed esce con `EXIT_FAILURE` (sezione 4).
 
 ## 8. Requisiti
 
@@ -195,4 +209,4 @@ Con `-s 127.0.0.1` la prima riga diventa `Ricevuto risultato dal server 127.0.0.
    - Non è necessario ricompilare il form di consegna dopo aggiornamenti al repository
    - La pagina dei risultati si aggiorna tre volte al giorno, alle 9, alle 15 e alle 21
 
-_Ver. 0.2.0_
+_Ver. 0.3.0_
