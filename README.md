@@ -63,7 +63,10 @@ La scelta è salvata nel workspace di Eclipse, non nel repository: in una coppia
 
 ### 4. Partire dalla soluzione TCP
 
-Il punto di partenza è la soluzione del primo esonero consegnata dalla vostra coppia: copiate il contenuto dei suoi `main.c` (client e server) nei `main.c` di questo repository e migratelo a UDP seguendo l'[assegnazione](Assegnazione.md). **Non copiate `protocol.h`**: usate quello di questo repository, che contiene le nuove costanti (`DEFAULT_SERVER_NAME`, `TIMEOUT_SEC`). Se nel `protocol.h` del primo esonero avevate aggiunto prototipi o costanti vostre, riportate solo quelle.
+Possono svolgere questo esonero solo le coppie che hanno consegnato e superato il primo esonero (TCP). Il punto di partenza è la soluzione consegnata:
+- copiate i file `.c` della cartella `src/` di client e server (non `protocol.h`) al posto di quelli di questo repository e migrateli a UDP seguendo l'[assegnazione](Assegnazione.md);
+- conservate `setvbuf` nel server e il blocco di inizializzazione di Winsock;
+- **non copiate `protocol.h`**: usate quello di questo repository. Rispetto al primo esonero ha le nuove costanti `DEFAULT_SERVER_NAME` (che sostituisce `DEFAULT_SERVER_IP`) e `TIMEOUT_SEC`, e non ha più `QUEUE_SIZE`. Se nel vecchio `protocol.h` avevate aggiunto prototipi o costanti vostre, riportate solo quelle.
 
 ## File Principali
 

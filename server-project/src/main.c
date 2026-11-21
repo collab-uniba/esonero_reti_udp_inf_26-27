@@ -9,10 +9,11 @@
 
 #if defined WIN32
 #include <winsock.h>
+typedef int socklen_t;
 #else
-#include <string.h>
 #include <unistd.h>
 #include <sys/types.h>
+#include <sys/time.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <netinet/in.h>
@@ -22,6 +23,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include "protocol.h"
 
 #define NO_ERROR 0
@@ -45,11 +47,11 @@ int main(int argc, char *argv[]) {
 	int result = WSAStartup(MAKEWORD(2,2), &wsa_data);
 	if (result != NO_ERROR) {
 		printf("Error at WSAStartup()\n");
-		return 0;
+		return EXIT_FAILURE;
 	}
 #endif
 
-	int my_socket;
+	int my_socket = -1;
 
 	// TODO: Create socket
 	// my_socket = socket(...);
@@ -57,7 +59,7 @@ int main(int argc, char *argv[]) {
 	// TODO: Configure server address
 	// struct sockaddr_in server_addr;
 	// server_addr.sin_family = AF_INET;
-	// server_addr.sin_port = htons(SERVER_PORT);
+	// server_addr.sin_port = htons(port);  // SERVER_PORT, or the value of -p
 	// server_addr.sin_addr.s_addr = htonl(INADDR_ANY);  // 0.0.0.0: receive datagrams on any interface (127.0.0.1 included)
 
 	// TODO: Bind socket
@@ -66,13 +68,12 @@ int main(int argc, char *argv[]) {
 	// TODO: Implement the request loop
 	// while (1) {
 	//     recvfrom(...);   // receive a request and the client address
+	//     // Ignore invalid datagrams and recvfrom() errors: never terminate
 	//     // Handle the request
 	//     sendto(...);     // reply to the client address
 	// }
 
-	printf("Server terminated.\n");
-
 	closesocket(my_socket);
 	clearwinsock();
-	return 0;
+	return EXIT_SUCCESS;
 } // main end
