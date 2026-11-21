@@ -201,7 +201,7 @@ Con `-s 127.0.0.1` l'output del primo esempio diventa `Ricevuto risultato dal se
 ## Consegna
 
 - **Scadenza**: _DA DEFINIRE_
-- **Form di prenotazione / consegna**: [link](#) _DA DEFINIRE_ (Ctrl/Cmd-clic per aprire in una nuova scheda)
+- **Form di prenotazione / consegna**: [link](https://forms.gle/vSxksC1DgMVKK3pv5) (Ctrl/Cmd-clic per aprire in una nuova scheda)
 - **Formato**: link al repository GitHub **privato**, con l'utente `correttore-lab-reti` aggiunto come collaboratore in lettura (vedi README)
 - **Risultati**: [link](#) _DA DEFINIRE_ (Ctrl/Cmd-clic per aprire in una nuova scheda)
 - **Note**:
