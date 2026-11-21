@@ -9,10 +9,11 @@
 
 #if defined WIN32
 #include <winsock.h>
+typedef int socklen_t;
 #else
-#include <string.h>
 #include <unistd.h>
 #include <sys/types.h>
+#include <sys/time.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <netinet/in.h>
@@ -22,6 +23,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include "protocol.h"
 
 #define NO_ERROR 0
@@ -42,7 +44,7 @@ int main(int argc, char *argv[]) {
 	int result = WSAStartup(MAKEWORD(2,2), &wsa_data);
 	if (result != NO_ERROR) {
 		printf("Error at WSAStartup()\n");
-		return 0;
+		return EXIT_FAILURE;
 	}
 #endif
 
@@ -51,6 +53,8 @@ int main(int argc, char *argv[]) {
 	// TODO: Create socket
 	// my_socket = socket(...);
 
+	// TODO: Set the receive timeout (see Assegnazione.md)
+
 	// TODO: Resolve the server name (-s) to an IP address
 	// gethostbyname(...);
 
@@ -58,15 +62,13 @@ int main(int argc, char *argv[]) {
 	// struct sockaddr_in server_addr;
 	// ...
 
-	// TODO: Set the receive timeout (see Assegnazione.md)
-
-	// TODO: Implement communication logic
+	// TODO: Implement communication logic (no connect(): see Assegnazione.md)
 	// sendto(...);
-	// recvfrom(...);
+	// recvfrom(...);   // then validate the response (see Assegnazione.md)
 
 	// TODO: Close socket
 	// closesocket(my_socket);
 
 	clearwinsock();
-	return 0;
+	return EXIT_SUCCESS;
 } // main end

@@ -122,13 +122,24 @@ def run_client(client, args):
 
 def exchange(port, payload):
     """Send one request datagram to the server and return the response datagram."""
+    deadline = time.time() + TIMEOUT
     with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
         sock.settimeout(TIMEOUT)
-        sock.sendto(payload, (HOST, port))
-        try:
-            return sock.recvfrom(1024)[0]
-        except socket.timeout:
-            raise OSError("nessuna risposta entro %d s" % TIMEOUT)
+        while True:
+            sock.sendto(payload, (HOST, port))
+            try:
+                data, addr = sock.recvfrom(1024)
+                break
+            except socket.timeout:
+                raise OSError("nessuna risposta entro %d s" % TIMEOUT)
+            except ConnectionResetError:  # Windows: nobody on the port (yet)
+                if time.time() > deadline:
+                    raise OSError("nessun server in ascolto sulla porta %d" % port)
+                time.sleep(0.2)
+    if addr[1] != port:
+        raise OSError("la risposta arriva dalla porta %d invece che dalla %d: rispondi con lo "
+                      "stesso socket su cui hai ricevuto la richiesta" % (addr[1], port))
+    return data
 
 
 def ignored(port, payload):
@@ -196,10 +207,16 @@ def test_server(server, client):
         for name, payload in (("datagramma troppo corto (5 byte) ignorato", b"m\0\0\0k"),
                               ("datagramma troppo lungo (20 byte) ignorato",
                                struct.pack("!4s4sf", frm.encode(), to.encode(), value) + bytes(8))):
-            check(section, name, ignored(DEFAULT_PORT, payload),
-                  "il server ha risposto: i datagrammi di dimensione diversa da 12 byte vanno ignorati "
-                  "(per quelli piu' lunghi, ricevi in un buffer piu' grande e controlla quanti byte "
-                  "restituisce recvfrom)")
+            if not ignored(DEFAULT_PORT, payload):
+                check(section, name, False, "il server ha risposto: i datagrammi di dimensione diversa "
+                      "da 12 byte vanno ignorati (per quelli piu' lunghi, ricevi in un buffer piu' "
+                      "grande e controlla quanti byte restituisce recvfrom)")
+            elif proc.poll() is not None:
+                check(section, name, False, "il server e' terminato (exit code %s): un datagramma non "
+                      "valido o un errore di recvfrom non devono chiudere il server" % proc.returncode)
+                return
+            else:
+                check(section, name, True)
 
     # End-to-end: student client against student server, default address and port
     code, out, err = run_client(client, ["-r", CASES[0][0]])
@@ -232,16 +249,20 @@ def test_server_port_option(server):
     """The server started with -p PORT listens on that port and answers."""
     section, name = "server", "avvio con -p %d" % OPTION_PORT
     try:
+        errors = tempfile.TemporaryFile()
         proc = subprocess.Popen([server, "-p", str(OPTION_PORT)], stdout=subprocess.DEVNULL,
-                                stderr=subprocess.DEVNULL, stdin=subprocess.DEVNULL)
+                                stderr=errors, stdin=subprocess.DEVNULL)
     except OSError as e:
         check(section, name, False, "impossibile eseguire il server: %s" % e)
         return
     try:
         time.sleep(1)
         if proc.poll() is not None:
-            check(section, name, False, "il server termina subito (exit code %s): controlla la "
-                  "lettura degli argomenti, il valore dopo -p non e' un argomento a se'" % proc.returncode)
+            errors.seek(0)
+            stderr = normalize(errors.read()).strip()
+            check(section, name, False, "il server termina subito (exit code %s)%s; controlla la "
+                  "lettura degli argomenti: il valore dopo -p non e' un argomento a se'"
+                  % (proc.returncode, (": " + stderr.replace("\n", " | ")) if stderr else ""))
             return
         req = CASES[0][0]
         frm, to, value = parse_request(req)
@@ -259,6 +280,15 @@ def test_server_port_option(server):
                 proc.wait(timeout=TIMEOUT)
             except subprocess.TimeoutExpired:
                 proc.kill()
+
+
+def drain(sock):
+    """Discard datagrams left over from a previous test."""
+    while select.select([sock], [], [], 0)[0]:
+        try:
+            sock.recvfrom(1024)
+        except ConnectionResetError:  # Windows: ICMP from a response sent to a closed client
+            pass
 
 
 def serve_reference(sock, mode=None):
@@ -286,6 +316,7 @@ def client_vs_reference(client, args, sock, mode=None):
 
     Returns (exit code, stdout, raw request or None if no request was sent, error).
     """
+    drain(sock)
     try:
         proc = subprocess.Popen([client] + args, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                                 stdin=subprocess.DEVNULL)
@@ -298,6 +329,8 @@ def client_vs_reference(client, args, sock, mode=None):
         if select.select([sock], [], [], 0.3 if exited else 0.1)[0]:
             try:
                 request = serve_reference(sock, mode)
+            except ConnectionResetError:  # Windows: stale ICMP, not the client's request
+                continue
             except OSError as e:
                 request, error = b"", "errore di comunicazione: %s" % e
             break
@@ -348,7 +381,7 @@ def test_client(client):
             check(section, name, False, err)
             continue
         if request is None:
-            check(section, name, False, "il client non invia la richiesta al server")
+            check(section, name, False, "il client non invia la richiesta al server (controlla -s e -p)")
             continue
         problem = check_request(request, frm, to, value)
         if problem:

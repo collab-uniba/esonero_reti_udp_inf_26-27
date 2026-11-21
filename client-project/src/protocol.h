@@ -13,7 +13,6 @@
 
 // Shared application parameters
 #define DEFAULT_SERVER_NAME "localhost"  // Default server (-s): host name or IP address
-#define DEFAULT_SERVER_IP "127.0.0.1"    // Address that localhost resolves to
 #define SERVER_PORT 56700          // Default server port
 #define TIMEOUT_SEC 5              // Client: seconds to wait for the response
 
