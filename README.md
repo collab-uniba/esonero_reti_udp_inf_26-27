@@ -41,6 +41,7 @@ Il repository è organizzato in due progetti Eclipse CDT separati, più la carte
    ```bash
    git clone <url-del-tuo-repository>
    ```
+5. Aprire la scheda **Actions** del repository su GitHub e verificare che i workflow siano abilitati: se compare un avviso di workflow disabilitati, abilitarli (oppure in _Settings → Actions → General_ scegliere **Allow all actions and reusable workflows**). Senza questo passo la [verifica automatica](#verifica-automatica) non parte
 
 ### 2. Importare i progetti in Eclipse
 
