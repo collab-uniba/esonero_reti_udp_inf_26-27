@@ -12,9 +12,10 @@
 #include <stdint.h>
 
 // Shared application parameters
-#define DEFAULT_SERVER_IP "127.0.0.1"
+#define DEFAULT_SERVER_NAME "localhost"  // Default server (-s): host name or IP address
+#define DEFAULT_SERVER_IP "127.0.0.1"    // Address that localhost resolves to
 #define SERVER_PORT 56700          // Default server port
-#define QUEUE_SIZE 5               // Size of pending connections queue (server)
+#define TIMEOUT_SEC 5              // Client: seconds to wait for the response
 
 #define UNIT_LEN 4                 // Unit symbol: up to 3 characters + '\0'
 #define MAX_VALUE 1000.0f          // Largest value accepted by the server
@@ -25,14 +26,14 @@
 #define STATUS_INCOMPATIBLE_UNITS 2
 #define STATUS_INVALID_VALUE 3
 
-// Request message (client -> server), 12 bytes
+// Request datagram (client -> server), 12 bytes
 typedef struct {
     char from[UNIT_LEN];   // Source unit symbol, null-terminated (e.g. "mi")
     char to[UNIT_LEN];     // Target unit symbol, null-terminated (e.g. "km")
     uint32_t value;        // Value: bits of a float, network byte order
 } conversion_request_t;
 
-// Response message (server -> client), 8 bytes
+// Response datagram (server -> client), 8 bytes
 typedef struct {
     uint32_t status;       // STATUS_* code, network byte order
     uint32_t value;        // Converted value: bits of a float, network byte order

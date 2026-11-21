@@ -1,11 +1,11 @@
-# Esonero TCP - Corso di Reti di Calcolatori - Informatica 2026-27
+# Esonero UDP - Corso di Reti di Calcolatori - Informatica 2026-27
 
-Repository per l'assegnazione della prima prova di esonero: client-server TCP.
+Repository per l'assegnazione della seconda prova di esonero: client-server UDP.
 
 
 ## Descrizione
 
-Questo repository contiene la struttura base per lo sviluppo di un'applicazione client-server TCP in linguaggio C, utilizzando l'API socket (BSD socket su Linux e macOS, Winsock su Windows). Il codice è progettato per essere portabile su sistemi operativi **Windows**, **Linux** e **macOS**.
+Questo repository contiene la struttura base per lo sviluppo di un'applicazione client-server UDP in linguaggio C, utilizzando l'API socket (BSD socket su Linux e macOS, Winsock su Windows). Il codice è progettato per essere portabile su sistemi operativi **Windows**, **Linux** e **macOS**.
 
 ## Struttura del Repository
 
@@ -60,6 +60,10 @@ La scelta è salvata nel workspace di Eclipse, non nel repository: in una coppia
 - **macOS**: Xcode Command Line Tools (`xcode-select --install`)
 - **Windows**: MinGW-w64 installato
 
+### 4. Partire dalla soluzione TCP
+
+Il punto di partenza è la soluzione del primo esonero consegnata dalla vostra coppia: copiate il contenuto dei suoi `main.c` (client e server) nei `main.c` di questo repository e migratelo a UDP seguendo l'[assegnazione](Assegnazione.md). **Non copiate `protocol.h`**: usate quello di questo repository, che contiene le nuove costanti (`DEFAULT_SERVER_NAME`, `TIMEOUT_SEC`). Se nel `protocol.h` del primo esonero avevate aggiunto prototipi o costanti vostre, riportate solo quelle.
+
 ## File Principali
 
 ### protocol.h
@@ -102,6 +106,7 @@ Il server resta in esecuzione finché non viene interrotto con `Ctrl+C`.
 A ogni `git push`, GitHub compila client e server su **Windows, Linux e macOS** e li verifica con alcuni esempi presi dall'assegnazione.
 
 - L'esito compare nella scheda **Actions** del vostro repository e accanto a ogni commit (✅ superato, ❌ fallito).
+- Per rilanciare la verifica senza fare un nuovo push: scheda **Actions** → **Smoke test** (a sinistra) → **Run workflow** → **Run workflow**.
 - In caso di fallimento, aprite l'esecuzione e consultate la pagina **Summary**: per ogni verifica fallita è indicato cosa era atteso e cosa è stato ricevuto.
 - La verifica automatica serve a intercettare subito gli errori evidenti (codice che non compila su un sistema operativo, formato di output errato, byte order). **Superarla non garantisce** il superamento della correzione finale, che usa ulteriori casi di test.
 - Non modificate la cartella `.github/`.
@@ -171,12 +176,12 @@ git config --global pull.rebase false
 
    Dopo aver aggiunto i file alla staging area, creare un commit con un messaggio descrittivo:
    ```bash
-   git commit -m "Implementazione logica client-server TCP"
+   git commit -m "Migrazione del client-server a UDP"
    ```
 
    Il messaggio del commit dovrebbe descrivere brevemente le modifiche apportate. Altri esempi:
    ```bash
-   git commit -m "Aggiunta funzione di gestione connessioni"
+   git commit -m "Aggiunta risoluzione del nome del server"
    git commit -m "Implementazione protocollo comunicazione"
    git commit -m "Fix gestione errori socket"
    ```
