@@ -54,6 +54,10 @@ CASES = [
     ("lb kg 1000.01", "Valore non valido", "Richiesta 'lb kg 1000.01' dal client ip 127.0.0.1"),
 ]
 
+# Request the server must ignore when it comes in a datagram longer than 12 bytes
+LONG_REQUEST = "g kg 7"
+LONG_REQUEST_LOG = "'g kg 7.00'"
+
 USAGE_CASES = ["mile km 10", "m km abc", "m km 10,50", "m km", "m km 10 20"]
 
 BYTE_ORDER_HINT = "sembra un errore di byte order: hai usato htonl()/ntohl()?"
@@ -127,6 +131,18 @@ def exchange(port, payload):
             raise OSError("nessuna risposta entro %d s" % TIMEOUT)
 
 
+def ignored(port, payload):
+    """True if the server sends no response to the datagram within one second."""
+    with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
+        sock.settimeout(1)
+        sock.sendto(payload, (HOST, port))
+        try:
+            sock.recvfrom(1024)
+            return False
+        except (socket.timeout, ConnectionResetError):
+            return True
+
+
 def test_server(server, client):
     section = "server"
     log = tempfile.TemporaryFile()
@@ -174,6 +190,17 @@ def test_server(server, client):
                 detail += "; " + FLOAT_HINT
             check(section, name, False, detail)
 
+    # Datagrams of the wrong size must be ignored: no response, no log line
+    if expected_log:
+        frm, to, value = parse_request(LONG_REQUEST)
+        for name, payload in (("datagramma troppo corto (5 byte) ignorato", b"m\0\0\0k"),
+                              ("datagramma troppo lungo (20 byte) ignorato",
+                               struct.pack("!4s4sf", frm.encode(), to.encode(), value) + bytes(8))):
+            check(section, name, ignored(DEFAULT_PORT, payload),
+                  "il server ha risposto: i datagrammi di dimensione diversa da 12 byte vanno ignorati "
+                  "(per quelli piu' lunghi, ricevi in un buffer piu' grande e controlla quanti byte "
+                  "restituisce recvfrom)")
+
     # End-to-end: student client against student server, default address and port
     code, out, err = run_client(client, ["-r", CASES[0][0]])
     expected_out = DEFAULT_PREFIX + CASES[0][1]
@@ -194,6 +221,8 @@ def test_server(server, client):
     missing = [line for line in expected_log if line not in lines]
     if not expected_log:  # no request reached the server: nothing to verify
         return
+    check(section, "nessun log per i datagrammi ignorati", not any(LONG_REQUEST_LOG in l for l in lines),
+          "il server ha stampato il log del datagramma troppo lungo %s" % LONG_REQUEST_LOG)
     check(section, "log delle richieste", not missing,
           "righe mancanti o diverse, ad es. %r (righe stampate: %r). Se non stampa nulla, "
           "chiama fflush(stdout) dopo ogni printf" % (missing[0] if missing else "", lines[:3]))
@@ -232,18 +261,27 @@ def test_server_port_option(server):
                 proc.kill()
 
 
-def serve_reference(sock):
-    """Read one request datagram and reply as the reference server. Returns the raw request."""
+def serve_reference(sock, mode=None):
+    """Read one request datagram and reply as the reference server. Returns the raw request.
+
+    mode "other_port": the response comes from another port; "long": one extra byte.
+    """
     data, addr = sock.recvfrom(1024)
     if len(data) == 12:
         frm = data[0:4].split(b"\0")[0].decode("ascii", errors="replace")
         to = data[4:8].split(b"\0")[0].decode("ascii", errors="replace")
         value = struct.unpack("!f", data[8:12])[0]
-        sock.sendto(struct.pack("!If", *reference_response(frm, to, value)), addr)
+        response = struct.pack("!If", *reference_response(frm, to, value))
+        if mode == "other_port":
+            with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as other:
+                other.bind((HOST, 0))
+                other.sendto(response, addr)
+        else:
+            sock.sendto(response + (b"\0" if mode == "long" else b""), addr)
     return data
 
 
-def client_vs_reference(client, args, sock):
+def client_vs_reference(client, args, sock, mode=None):
     """Run the client against the reference server.
 
     Returns (exit code, stdout, raw request or None if no request was sent, error).
@@ -259,7 +297,7 @@ def client_vs_reference(client, args, sock):
         exited = proc.poll() is not None
         if select.select([sock], [], [], 0.3 if exited else 0.1)[0]:
             try:
-                request = serve_reference(sock)
+                request = serve_reference(sock, mode)
             except OSError as e:
                 request, error = b"", "errore di comunicazione: %s" % e
             break
@@ -329,6 +367,16 @@ def test_client(client):
             check(section, name, code != 0 and request is None,
                   "atteso exit code != 0 e nessuna richiesta inviata (exit code %s, richiesta: %s)"
                   % (code, "no" if request is None else "si"))
+
+    # The client accepts only a response of the right size from the server's address and port
+    for mode, name in (("other_port", "risposta da un'altra porta rifiutata"),
+                       ("long", "risposta troppo lunga (9 byte) rifiutata")):
+        code, out, request, err = client_vs_reference(client, port_args + ["-r", CASES[0][0]], ref, mode)
+        if err:
+            check(section, name, False, err)
+        else:
+            check(section, name, request is not None and code != 0 and not out.startswith(PREFIX),
+                  "atteso exit code != 0 senza risultato (exit code %s, output %r)" % (code, out))
     ref.close()
 
     code, out, err = run_client(client, ["-s", HOST, "-p", str(CLOSED_PORT), "-r", CASES[0][0]])
