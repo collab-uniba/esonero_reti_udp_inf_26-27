@@ -35,7 +35,7 @@ jobs:
           gcc -Wall -o build/server-project server-project/src/*.c $LIBS
 
       - name: Keep the ephemeral ports away from the test ports
-        # 56700-56702 fall inside the OS ephemeral port range: an outgoing
+        # 56700-56703 fall inside the OS ephemeral port range: an outgoing
         # socket (the client tests, the runner itself) may get 56700 as
         # local port and the server's bind then fails
         run: |
