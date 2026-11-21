@@ -126,7 +126,7 @@ dove `<nome>` è la stringa passata con `-s` (o `DEFAULT_SERVER_NAME`) e `<ip>` 
 
 Il client invia la richiesta con `sendto()` e riceve la risposta con `recvfrom()`: **non usate `connect()`** sul socket UDP.
 
-**Codici di uscita**: client e server terminano con le costanti `EXIT_SUCCESS` ed `EXIT_FAILURE` di `<stdlib.h>`, non con valori numerici. Il client esce con `EXIT_SUCCESS` solo quando stampa una riga `Ricevuto risultato dal server ...`, compresi i casi `Simbolo non supportato`, `Grandezze incompatibili` e `Valore non valido`; in tutti gli altri casi esce con `EXIT_FAILURE`. Il testo dei messaggi di errore è libero (stampateli su `stderr`).
+**Codici di uscita**: client e server terminano con le costanti `EXIT_SUCCESS` ed `EXIT_FAILURE` di `<stdlib.h>`, non con valori numerici. Il client esce con `EXIT_SUCCESS` solo quando stampa una riga `Ricevuto risultato dal server ...`, compresi i casi `Simbolo non supportato`, `Grandezze incompatibili` e `Valore non valido`; in tutti gli altri casi esce con `EXIT_FAILURE`. Il testo dei messaggi di errore è libero (stampateli su `stderr`); fa eccezione la riga `Uso: ...` della sezione 7, che ha un testo fisso e va su `stdout`.
 
 ## 5. Timeout (client)
 
@@ -157,6 +157,9 @@ Se la regola 2 o la 3 non è rispettata, il client stampa un errore ed esce con 
 > [!TIP]
 > `recvfrom()` scrive al massimo tanti byte quanti ne contiene il buffer. Con un datagramma più lungo, su Linux e macOS lo tronca senza errore, su Windows restituisce un errore. Per accorgervi che un datagramma è troppo lungo, ricevete in un buffer più grande del messaggio atteso e controllate il valore restituito. Su Windows `recvfrom()` può fallire anche per altri motivi (ad esempio dopo un `sendto()` verso un client che ha già chiuso il socket): per questo il server non deve mai terminare per un errore di `recvfrom()`.
 
+> [!NOTE]
+> Per le prove usate `-s localhost` o `-s 127.0.0.1`. Un server legato a `INADDR_ANY` risponde dall'indirizzo principale dell'interfaccia: a una richiesta inviata a un altro indirizzo di loopback (ad esempio `127.0.1.1`, a cui su Ubuntu punta il nome della macchina in `/etc/hosts`) risponde da `127.0.0.1`, e il client rifiuta giustamente la risposta per la regola 2.
+
 ## 7. Esempi
 
 Server avviato con `server-project`, client avviato con `client-project -r ...` (quindi il server è `DEFAULT_SERVER_NAME`, cioè `localhost`). La colonna **Log server** riporta l'output del server per la stessa richiesta.
@@ -178,7 +181,7 @@ Server avviato con `server-project`, client avviato con `client-project -r ...` 
 | `"g kg 0"` | `Ricevuto risultato dal server localhost (ip 127.0.0.1). Valore non valido` | `Richiesta 'g kg 0.00' dal client ip 127.0.0.1` |
 | `"lb kg 1000.01"` | `Ricevuto risultato dal server localhost (ip 127.0.0.1). Valore non valido` | `Richiesta 'lb kg 1000.01' dal client ip 127.0.0.1` |
 
-Se `-r` manca o il suo argomento non è nel formato `"FROM TO valore"` (simbolo più lungo di 3 caratteri, valore non numerico, campi mancanti o in più), il client **non risolve il nome e non contatta il server**, stampa
+Se `-r` manca o il suo argomento non è nel formato `"FROM TO valore"` (simbolo più lungo di 3 caratteri, valore non numerico, campi mancanti o in più), oppure se la riga di comando contiene un'opzione sconosciuta o una porta non valida, il client **non risolve il nome e non contatta il server**, stampa su `stdout` (ad esempio con `printf()`, come le righe `Ricevuto risultato ...`)
 
 ```
 Uso: client-project [-s server] [-p port] -r "FROM TO valore"
@@ -209,4 +212,4 @@ Con `-s 127.0.0.1` l'output del primo esempio diventa `Ricevuto risultato dal se
    - Non è necessario ricompilare il form di consegna dopo aggiornamenti al repository
    - La pagina dei risultati si aggiorna tre volte al giorno, alle 9, alle 15 e alle 21
 
-_Ver. 0.3.0_
+_Ver. 0.4.0_

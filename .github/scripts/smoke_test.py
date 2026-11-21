@@ -58,6 +58,9 @@ CASES = [
 LONG_REQUEST = "g kg 7"
 LONG_REQUEST_LOG = "'g kg 7.00'"
 
+USAGE = 'Uso: client-project [-s server] [-p port] -r "FROM TO valore"'
+EXIT_FAILURE = 1  # value of EXIT_FAILURE on Windows, Linux and macOS
+
 USAGE_CASES = ["mile km 10", "m km abc", "m km 10,50", "m km", "m km 10 20"]
 
 BYTE_ORDER_HINT = "sembra un errore di byte order: hai usato htonl()/ntohl()?"
@@ -124,17 +127,16 @@ def exchange(port, payload):
     """Send one request datagram to the server and return the response datagram."""
     deadline = time.time() + TIMEOUT
     with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
-        sock.settimeout(TIMEOUT)
+        sock.settimeout(0.5)
         while True:
+            # Sent again until the deadline: the server may not be bound yet
             sock.sendto(payload, (HOST, port))
             try:
                 data, addr = sock.recvfrom(1024)
                 break
-            except socket.timeout:
-                raise OSError("nessuna risposta entro %d s" % TIMEOUT)
-            except ConnectionResetError:  # Windows: nobody on the port (yet)
+            except (socket.timeout, ConnectionResetError):  # Windows: nobody on the port (yet)
                 if time.time() > deadline:
-                    raise OSError("nessun server in ascolto sulla porta %d" % port)
+                    raise OSError("nessuna risposta entro %d s" % TIMEOUT)
                 time.sleep(0.2)
     if addr[1] != port:
         raise OSError("la risposta arriva dalla porta %d invece che dalla %d: rispondi con lo "
@@ -397,9 +399,10 @@ def test_client(client):
         if err:
             check(section, name, False, err)
         else:
-            check(section, name, code != 0 and request is None,
-                  "atteso exit code != 0 e nessuna richiesta inviata (exit code %s, richiesta: %s)"
-                  % (code, "no" if request is None else "si"))
+            check(section, name, code == EXIT_FAILURE and out == USAGE and request is None,
+                  "attesi la riga %r su stdout, EXIT_FAILURE (%d) e nessuna richiesta inviata "
+                  "(exit code %s, output %r, richiesta: %s)"
+                  % (USAGE, EXIT_FAILURE, code, out, "no" if request is None else "si"))
 
     # The client accepts only a response of the right size from the server's address and port
     for mode, name in (("other_port", "risposta da un'altra porta rifiutata"),
@@ -408,13 +411,15 @@ def test_client(client):
         if err:
             check(section, name, False, err)
         else:
-            check(section, name, request is not None and code != 0 and not out.startswith(PREFIX),
-                  "atteso exit code != 0 senza risultato (exit code %s, output %r)" % (code, out))
+            check(section, name, request is not None and code == EXIT_FAILURE and not out.startswith(PREFIX),
+                  "atteso EXIT_FAILURE (%d) senza risultato (exit code %s, output %r)"
+                  % (EXIT_FAILURE, code, out))
     ref.close()
 
     code, out, err = run_client(client, ["-s", HOST, "-p", str(CLOSED_PORT), "-r", CASES[0][0]])
-    check(section, "server non raggiungibile", not err and code != 0 and not out.startswith(PREFIX),
-          err or "atteso exit code != 0 (exit code %s, output %r)" % (code, out))
+    check(section, "server non raggiungibile",
+          not err and code == EXIT_FAILURE and not out.startswith(PREFIX),
+          err or "atteso EXIT_FAILURE (%d) (exit code %s, output %r)" % (EXIT_FAILURE, code, out))
 
 
 def write_summary():

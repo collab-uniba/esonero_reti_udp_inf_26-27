@@ -63,9 +63,11 @@ La scelta è salvata nel workspace di Eclipse, non nel repository: in una coppia
 
 ### 4. Partire dalla soluzione TCP
 
-Possono svolgere questo esonero solo le coppie che hanno consegnato e superato il primo esonero (TCP). Il punto di partenza è la soluzione consegnata:
-- copiate i file `.c` della cartella `src/` di client e server (non `protocol.h`) al posto di quelli di questo repository e migrateli a UDP seguendo l'[assegnazione](Assegnazione.md);
-- conservate `setvbuf` nel server e il blocco di inizializzazione di Winsock;
+Possono svolgere questo esonero solo le coppie che hanno consegnato e superato il primo esonero (TCP). Il punto di partenza è la soluzione consegnata, ma **non va copiata e incollata al posto dei file di questo repository: va adattata al template UDP**. Il modo più semplice è partire dai `main.c` di questo repository e riportarci, pezzo per pezzo, il codice TCP che resta valido:
+- **da conservare così com'è, dal template UDP**: il blocco di `#include` iniziale (rispetto al TCP aggiunge `<sys/time.h>`, necessario per il timeout, e `socklen_t` per Windows), la funzione `clearwinsock()`, l'inizializzazione di Winsock e, nel server, `setvbuf`;
+- **da riportare dalla soluzione TCP**: la lettura degli argomenti, il parsing di `-r`, la conversione e la gestione degli errori del server, le stampe dell'output e del log. Sono le parti che non dipendono dal trasporto;
+- **da riscrivere per UDP**: creazione del socket, invio e ricezione (`sendto()`/`recvfrom()` al posto di `connect()`/`send()`/`recv()`, `listen()` e `accept()`), più le parti nuove descritte nell'[assegnazione](Assegnazione.md): risoluzione del nome, timeout, validazione dei datagrammi;
+- se la soluzione TCP aveva altri file `.c` oltre a `main.c`, copiateli in `src/` e adattateli allo stesso modo: la verifica automatica e la correzione compilano tutti i `.c` della cartella;
 - **non copiate `protocol.h`**: usate quello di questo repository. Rispetto al primo esonero ha le nuove costanti `DEFAULT_SERVER_NAME` (che sostituisce `DEFAULT_SERVER_IP`) e `TIMEOUT_SEC`, e non ha più `QUEUE_SIZE`. Se nel vecchio `protocol.h` avevate aggiunto prototipi o costanti vostre, riportate solo quelle.
 
 ## File Principali
