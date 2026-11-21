@@ -5,7 +5,8 @@
 Migrare a **UDP** l'applicazione client/server del primo esonero, in cui il server è un **convertitore di unità di misura**. Il punto di partenza è la soluzione TCP consegnata dalla vostra coppia: protocollo applicativo, conversione e formato dei messaggi restano gli stessi; cambiano il trasporto (datagrammi UDP) e alcuni requisiti del client:
 
 - `-s` accetta un **nome** di host (es. `localhost`) oltre a un indirizzo IP, e l'output del client riporta il nome e l'indirizzo IP del server;
-- il client attende la risposta per al massimo `TIMEOUT_SEC` secondi.
+- il client attende la risposta per al massimo `TIMEOUT_SEC` secondi;
+- client e server **validano i datagrammi** ricevuti (sezione 6).
 
 La specifica è data da tre elementi, da leggere insieme:
 
@@ -42,7 +43,7 @@ sequenceDiagram
     Note over C: closesocket()
 ```
 
-Il server risponde a una richiesta alla volta e non termina mai. I datagrammi di dimensione diversa da `sizeof(conversion_request_t)` vengono ignorati: nessuna risposta e nessuna riga di log.
+Il server risponde a una richiesta alla volta e non termina mai.
 
 ## 3. Conversione (server)
 
@@ -127,8 +128,22 @@ Con UDP il client non ha modo di sapere se il server è in ascolto: senza un tim
 	setsockopt(my_socket, SOL_SOCKET, SO_RCVTIMEO, (const char *) &timeout, sizeof(timeout));
 ```
 
-Se `recvfrom()` fallisce (timeout scaduto o errore) o il datagramma ricevuto non ha la dimensione di `conversion_response_t`, il client stampa un errore ed esce con codice di uscita diverso da 0.
-## 6. Esempi
+Se `recvfrom()` fallisce (timeout scaduto o errore), il client stampa un errore ed esce con codice di uscita diverso da 0.
+
+## 6. Validazione dei datagrammi
+
+Con UDP chiunque può inviare un datagramma a un socket, di qualsiasi dimensione. Client e server non si fidano di ciò che ricevono:
+
+1. **Server**: un datagramma di dimensione diversa da `sizeof(conversion_request_t)` viene ignorato: nessuna risposta e nessuna riga di log. Il server resta in attesa della richiesta successiva.
+2. **Client**: la risposta deve provenire dallo stesso indirizzo IP **e** dalla stessa porta a cui è stata inviata la richiesta (confrontate l'indirizzo restituito da `recvfrom()` con quello del server).
+3. **Client**: la risposta deve avere dimensione `sizeof(conversion_response_t)`.
+
+Se la regola 2 o la 3 non è rispettata, il client stampa un errore ed esce con codice di uscita diverso da 0.
+
+> [!TIP]
+> `recvfrom()` scrive al massimo tanti byte quanti ne contiene il buffer: su Linux e macOS un datagramma più lungo viene troncato senza errore. Per accorgervi che un datagramma è troppo lungo, ricevete in un buffer più grande del messaggio atteso e controllate il valore restituito.
+
+## 7. Esempi
 
 Server avviato con `server-project`, client avviato con `client-project -r ...` (quindi `-s` vale `localhost`). La colonna **Log server** riporta l'output del server per la stessa richiesta.
 
@@ -161,9 +176,9 @@ Con `-s 127.0.0.1` la prima riga diventa `Ricevuto risultato dal server 127.0.0.
 
 > [!WARNING]
 > L'output deve corrispondere **carattere per carattere** a quello degli esempi: lingua italiana, spazi, punteggiatura, due cifre decimali, nessun messaggio aggiuntivo.
-> Se il nome del server non si risolve, la risposta non arriva entro `TIMEOUT_SEC` secondi o non è valida (dimensione errata, codice di stato sconosciuto), il client stampa un errore ed esce con codice di uscita diverso da 0; in tutti gli altri casi esce con codice 0.
+> Se il nome del server non si risolve, la risposta non arriva entro `TIMEOUT_SEC` secondi o non è valida (mittente o dimensione errati, codice di stato sconosciuto), il client stampa un errore ed esce con codice di uscita diverso da 0; in tutti gli altri casi esce con codice 0.
 
-## 7. Requisiti
+## 8. Requisiti
 
 1. Il codice compila ed esegue su **Windows, Linux e macOS**, nei progetti Eclipse CDT forniti.
 2. Il client è compatibile con il server di riferimento e il server con il client di riferimento, usati per la correzione.
@@ -180,4 +195,4 @@ Con `-s 127.0.0.1` la prima riga diventa `Ricevuto risultato dal server 127.0.0.
    - Non è necessario ricompilare il form di consegna dopo aggiornamenti al repository
    - La pagina dei risultati si aggiorna tre volte al giorno, alle 9, alle 15 e alle 21
 
-_Ver. 0.1.0_
+_Ver. 0.2.0_
