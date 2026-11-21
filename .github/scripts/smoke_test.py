@@ -24,8 +24,10 @@ REF_PORT = 56701
 CLOSED_PORT = 56702
 OPTION_PORT = 56703  # server started with -p
 TIMEOUT = 5
+CLIENT_TIMEOUT = 10  # longer than the client's own receive timeout (TIMEOUT_SEC)
 MAX_VALUE = 1000.0
-PREFIX = "Ricevuto risultato dal server ip 127.0.0.1. "
+PREFIX = "Ricevuto risultato dal server 127.0.0.1 (ip 127.0.0.1). "        # client run with -s 127.0.0.1
+DEFAULT_PREFIX = "Ricevuto risultato dal server localhost (ip 127.0.0.1). "  # client run without -s
 
 UNITS = {  # (quantity, 1 unit in metres or kilograms)
     "m": ("L", 1.0), "km": ("L", 1000.0), "ft": ("L", 0.3048),
@@ -92,21 +94,6 @@ def reference_response(frm, to, value):
     return 0, to_float32(value * factor_from / factor_to)  # convert(): double math, float result
 
 
-def recv_exactly(sock, n):
-    data = b""
-    while len(data) < n:
-        try:
-            chunk = sock.recv(n - len(data))
-        except socket.timeout:
-            if data:  # partial message: report its length instead of a generic timeout
-                break
-            raise
-        if not chunk:
-            break
-        data += chunk
-    return data
-
-
 def normalize(out):
     return out.decode("utf-8", errors="replace").replace("\r\n", "\n").rstrip("\n")
 
@@ -121,23 +108,23 @@ def executable(path):
 def run_client(client, args):
     try:
         proc = subprocess.run([client] + args, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                              stdin=subprocess.DEVNULL, timeout=TIMEOUT)
+                              stdin=subprocess.DEVNULL, timeout=CLIENT_TIMEOUT)
         return proc.returncode, normalize(proc.stdout), None
     except subprocess.TimeoutExpired:
-        return None, "", "il client non termina entro %d s" % TIMEOUT
+        return None, "", "il client non termina entro %d s" % CLIENT_TIMEOUT
     except OSError as e:
         return None, "", "impossibile eseguire il client: %s" % e
 
 
-def connect_with_retry(port):
-    deadline = time.time() + TIMEOUT
-    while True:
+def exchange(port, payload):
+    """Send one request datagram to the server and return the response datagram."""
+    with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
+        sock.settimeout(TIMEOUT)
+        sock.sendto(payload, (HOST, port))
         try:
-            return socket.create_connection((HOST, port), timeout=TIMEOUT)
-        except ConnectionRefusedError:
-            if time.time() > deadline:
-                raise
-            time.sleep(0.2)
+            return sock.recvfrom(1024)[0]
+        except socket.timeout:
+            raise OSError("nessuna risposta entro %d s" % TIMEOUT)
 
 
 def test_server(server, client):
@@ -164,9 +151,7 @@ def test_server(server, client):
         payload = struct.pack("!4s4sf", frm.encode(), to.encode(), value)
         name = "risposta a '%s'" % req
         try:
-            with connect_with_retry(DEFAULT_PORT) as sock:
-                sock.sendall(payload)
-                data = recv_exactly(sock, 8)
+            data = exchange(DEFAULT_PORT, payload)
         except OSError as e:
             check(section, name, False, "errore di comunicazione sulla porta %d: %s (richieste "
                   "successive saltate)" % (DEFAULT_PORT, e))
@@ -191,7 +176,7 @@ def test_server(server, client):
 
     # End-to-end: student client against student server, default address and port
     code, out, err = run_client(client, ["-r", CASES[0][0]])
-    expected_out = PREFIX + CASES[0][1]
+    expected_out = DEFAULT_PREFIX + CASES[0][1]
     if err:
         check("end-to-end", "client e server con parametri di default", False, err)
     else:
@@ -232,9 +217,7 @@ def test_server_port_option(server):
         req = CASES[0][0]
         frm, to, value = parse_request(req)
         try:
-            with connect_with_retry(OPTION_PORT) as sock:
-                sock.sendall(struct.pack("!4s4sf", frm.encode(), to.encode(), value))
-                data = recv_exactly(sock, 8)
+            data = exchange(OPTION_PORT, struct.pack("!4s4sf", frm.encode(), to.encode(), value))
         except OSError as e:
             check(section, name, False, "errore di comunicazione sulla porta %d: %s" % (OPTION_PORT, e))
             return
@@ -249,23 +232,21 @@ def test_server_port_option(server):
                 proc.kill()
 
 
-def serve_reference(conn):
-    """Read one request and reply as the reference server. Returns the raw request."""
-    with conn:
-        conn.settimeout(TIMEOUT)
-        data = recv_exactly(conn, 12)
-        if len(data) == 12:
-            frm = data[0:4].split(b"\0")[0].decode("ascii", errors="replace")
-            to = data[4:8].split(b"\0")[0].decode("ascii", errors="replace")
-            value = struct.unpack("!f", data[8:12])[0]
-            conn.sendall(struct.pack("!If", *reference_response(frm, to, value)))
-        return data
+def serve_reference(sock):
+    """Read one request datagram and reply as the reference server. Returns the raw request."""
+    data, addr = sock.recvfrom(1024)
+    if len(data) == 12:
+        frm = data[0:4].split(b"\0")[0].decode("ascii", errors="replace")
+        to = data[4:8].split(b"\0")[0].decode("ascii", errors="replace")
+        value = struct.unpack("!f", data[8:12])[0]
+        sock.sendto(struct.pack("!If", *reference_response(frm, to, value)), addr)
+    return data
 
 
-def client_vs_reference(client, args, listener):
+def client_vs_reference(client, args, sock):
     """Run the client against the reference server.
 
-    Returns (exit code, stdout, raw request or None if no connection, error).
+    Returns (exit code, stdout, raw request or None if no request was sent, error).
     """
     try:
         proc = subprocess.Popen([client] + args, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
@@ -276,20 +257,20 @@ def client_vs_reference(client, args, listener):
     deadline = time.time() + TIMEOUT
     while time.time() < deadline:
         exited = proc.poll() is not None
-        if select.select([listener], [], [], 0.3 if exited else 0.1)[0]:
+        if select.select([sock], [], [], 0.3 if exited else 0.1)[0]:
             try:
-                request = serve_reference(listener.accept()[0])
+                request = serve_reference(sock)
             except OSError as e:
                 request, error = b"", "errore di comunicazione: %s" % e
             break
         if exited:
             break
     try:
-        out, _ = proc.communicate(timeout=TIMEOUT)
+        out, _ = proc.communicate(timeout=CLIENT_TIMEOUT)
     except subprocess.TimeoutExpired:
         proc.kill()
         proc.communicate()
-        return None, "", request, "il client non termina entro %d s" % TIMEOUT
+        return None, "", request, "il client non termina entro %d s" % CLIENT_TIMEOUT
     return proc.returncode, normalize(out), request, error
 
 
@@ -317,22 +298,19 @@ def check_request(data, frm, to, value):
 
 def test_client(client):
     section = "client"
-    listener = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    if os.name != "nt":  # on Windows SO_REUSEADDR allows port hijacking
-        listener.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    listener.bind((HOST, REF_PORT))
-    listener.listen(5)
+    ref = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    ref.bind((HOST, REF_PORT))
     port_args = ["-s", HOST, "-p", str(REF_PORT)]
 
     for req, expected_out, _ in CASES:
         frm, to, value = parse_request(req)
         name = "output per '%s'" % req
-        code, out, request, err = client_vs_reference(client, port_args + ["-r", req], listener)
+        code, out, request, err = client_vs_reference(client, port_args + ["-r", req], ref)
         if err:
             check(section, name, False, err)
             continue
         if request is None:
-            check(section, name, False, "il client non si connette al server")
+            check(section, name, False, "il client non invia la richiesta al server")
             continue
         problem = check_request(request, frm, to, value)
         if problem:
@@ -344,14 +322,14 @@ def test_client(client):
 
     for req in USAGE_CASES:
         name = "argomenti non validi '%s'" % req
-        code, out, request, err = client_vs_reference(client, port_args + ["-r", req], listener)
+        code, out, request, err = client_vs_reference(client, port_args + ["-r", req], ref)
         if err:
             check(section, name, False, err)
         else:
             check(section, name, code != 0 and request is None,
-                  "atteso exit code != 0 e nessuna connessione (exit code %s, connessione: %s)"
+                  "atteso exit code != 0 e nessuna richiesta inviata (exit code %s, richiesta: %s)"
                   % (code, "no" if request is None else "si"))
-    listener.close()
+    ref.close()
 
     code, out, err = run_client(client, ["-s", HOST, "-p", str(CLOSED_PORT), "-r", CASES[0][0]])
     check(section, "server non raggiungibile", not err and code != 0 and not out.startswith(PREFIX),

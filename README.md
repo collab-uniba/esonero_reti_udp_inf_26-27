@@ -1,11 +1,11 @@
-# Esonero TCP - Corso di Reti di Calcolatori - Informatica 2026-27
+# Esonero UDP - Corso di Reti di Calcolatori - Informatica 2026-27
 
-Repository per l'assegnazione della prima prova di esonero: client-server TCP.
+Repository per l'assegnazione della seconda prova di esonero: client-server UDP.
 
 
 ## Descrizione
 
-Questo repository contiene la struttura base per lo sviluppo di un'applicazione client-server TCP in linguaggio C, utilizzando l'API socket (BSD socket su Linux e macOS, Winsock su Windows). Il codice è progettato per essere portabile su sistemi operativi **Windows**, **Linux** e **macOS**.
+Questo repository contiene la struttura base per lo sviluppo di un'applicazione client-server UDP in linguaggio C, utilizzando l'API socket (BSD socket su Linux e macOS, Winsock su Windows). Il codice è progettato per essere portabile su sistemi operativi **Windows**, **Linux** e **macOS**.
 
 ## Struttura del Repository
 
@@ -59,6 +59,10 @@ I progetti contengono tre configurazioni già pronte, una per sistema operativo:
 La scelta è salvata nel workspace di Eclipse, non nel repository: in una coppia ciascuno usa la propria configurazione senza modificare file versionati. Prerequisiti del compilatore:
 - **macOS**: Xcode Command Line Tools (`xcode-select --install`)
 - **Windows**: MinGW-w64 installato
+
+### 4. Partire dalla soluzione TCP
+
+Il punto di partenza è la soluzione del primo esonero consegnata dalla vostra coppia: copiate il contenuto dei suoi `main.c` (client e server) nei `main.c` di questo repository e migratelo a UDP seguendo l'[assegnazione](Assegnazione.md). **Non copiate `protocol.h`**: usate quello di questo repository, che contiene le nuove costanti (`DEFAULT_SERVER_NAME`, `TIMEOUT_SEC`). Se nel `protocol.h` del primo esonero avevate aggiunto prototipi o costanti vostre, riportate solo quelle.
 
 ## File Principali
 
@@ -172,12 +176,12 @@ git config --global pull.rebase false
 
    Dopo aver aggiunto i file alla staging area, creare un commit con un messaggio descrittivo:
    ```bash
-   git commit -m "Implementazione logica client-server TCP"
+   git commit -m "Migrazione del client-server a UDP"
    ```
 
    Il messaggio del commit dovrebbe descrivere brevemente le modifiche apportate. Altri esempi:
    ```bash
-   git commit -m "Aggiunta funzione di gestione connessioni"
+   git commit -m "Aggiunta risoluzione del nome del server"
    git commit -m "Implementazione protocollo comunicazione"
    git commit -m "Fix gestione errori socket"
    ```
