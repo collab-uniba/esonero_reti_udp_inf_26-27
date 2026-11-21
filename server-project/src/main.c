@@ -1,9 +1,9 @@
 /*
  * main.c
  *
- * TCP Server - Template for Computer Networks assignment
+ * UDP Server - Template for Computer Networks assignment
  *
- * This file contains the boilerplate code for a TCP server
+ * This file contains the boilerplate code for a UDP server
  * portable across Windows, Linux and macOS.
  */
 
@@ -58,19 +58,16 @@ int main(int argc, char *argv[]) {
 	// struct sockaddr_in server_addr;
 	// server_addr.sin_family = AF_INET;
 	// server_addr.sin_port = htons(SERVER_PORT);
-	// server_addr.sin_addr.s_addr = htonl(INADDR_ANY);  // 0.0.0.0: accept connections on any interface (127.0.0.1 included)
+	// server_addr.sin_addr.s_addr = htonl(INADDR_ANY);  // 0.0.0.0: receive datagrams on any interface (127.0.0.1 included)
 
 	// TODO: Bind socket
 	// bind(...);
 
-	// TODO: Set socket to listen
-	// listen(...);
-
-	// TODO: Implement connection acceptance loop
+	// TODO: Implement the request loop
 	// while (1) {
-	//     int client_socket = accept(...);
-	//     // Handle client communication
-	//     closesocket(client_socket);
+	//     recvfrom(...);   // receive a request and the client address
+	//     // Handle the request
+	//     sendto(...);     // reply to the client address
 	// }
 
 	printf("Server terminated.\n");
