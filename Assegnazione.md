@@ -147,6 +147,9 @@ Con UDP il client non ha modo di sapere se il server è in ascolto: senza un tim
 
 Se `recvfrom()` fallisce (timeout scaduto o errore), il client stampa un errore ed esce con `EXIT_FAILURE`.
 
+> [!WARNING]
+> Il codice sopra **imposta solo il timeout**: non gestisce il caso in cui scade. Allo scadere di `TIMEOUT_SEC` secondi `recvfrom()` smette di attendere e restituisce `-1`: dovete **controllare il valore restituito da `recvfrom()`** e, se è negativo, stampare un errore su `stderr`, chiudere il socket e uscire con `EXIT_FAILURE`. Senza questo controllo il client prosegue senza una risposta valida.
+
 ## 6. Validazione dei datagrammi
 
 Con UDP chiunque può inviare un datagramma a un socket, di qualsiasi dimensione. Client e server non si fidano di ciò che ricevono:
