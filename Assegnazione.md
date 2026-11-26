@@ -2,7 +2,7 @@
 
 ## Obiettivo
 
-Migrare a **UDP** l'applicazione client/server del primo esonero, in cui il server è un **convertitore di unità di misura**. Il punto di partenza è la soluzione TCP consegnata dalla vostra coppia: le strutture `conversion_request_t` e `conversion_response_t`, la conversione e il log del server restano gli stessi; cambiano:
+Migrare a **UDP** l'applicazione client/server del primo esonero, in cui il server è un **convertitore di unità di misura**. Il punto di partenza è la soluzione TCP che avete consegnato (da soli o in coppia): le strutture `conversion_request_t` e `conversion_response_t`, la conversione e il log del server restano gli stessi; cambiano:
 
 - il trasporto: datagrammi UDP inviati con `sendto()` e ricevuti con `recvfrom()`;
 - `-s`, che accetta un **nome** di host (es. `localhost`) oltre a un indirizzo IP, e la riga di output del client, che riporta il nome e l'indirizzo IP del server;
@@ -208,7 +208,7 @@ Con `-s 127.0.0.1` l'output del primo esempio diventa `Ricevuto risultato dal se
 - **Formato**: link al repository GitHub **privato**, con l'utente `correttore-lab-reti` aggiunto come collaboratore in lettura (vedi README)
 - **Risultati**: [link](https://collab-uniba.github.io/correzione_esonero_reti_udp_inf_26-27/aggregate-report.html) (Ctrl/Cmd-clic per aprire in una nuova scheda)
 - **Note**:
-   - Una sola consegna per coppia
+   - Si può lavorare da soli o in coppia; chi lavora in coppia fa una sola consegna
    - Non è necessario ricompilare il form di consegna dopo aggiornamenti al repository
    - La pagina dei risultati si aggiorna tre volte al giorno, alle 9, alle 15 e alle 21
 
