@@ -212,4 +212,7 @@ Con `-s 127.0.0.1` l'output del primo esempio diventa `Ricevuto risultato dal se
    - Non è necessario ricompilare il form di consegna dopo aggiornamenti al repository
    - La pagina dei risultati si aggiorna ogni ora
 
+> [!CAUTION]
+> Il repository consegnato deve essere **privato**. Un repository **pubblico** rende il codice copiabile da chiunque: la prova ha **esito negativo**, a meno che il repository non venga reso privato immediatamente (Settings → General → Danger Zone → Change repository visibility).
+
 _Ver. 0.4.0_
