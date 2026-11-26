@@ -157,9 +157,6 @@ Se la regola 2 o la 3 non è rispettata, il client stampa un errore ed esce con 
 > [!TIP]
 > `recvfrom()` scrive al massimo tanti byte quanti ne contiene il buffer. Con un datagramma più lungo, su Linux e macOS lo tronca senza errore, su Windows restituisce un errore. Per accorgervi che un datagramma è troppo lungo, ricevete in un buffer più grande del messaggio atteso e controllate il valore restituito. Su Windows `recvfrom()` può fallire anche per altri motivi (ad esempio dopo un `sendto()` verso un client che ha già chiuso il socket): per questo il server non deve mai terminare per un errore di `recvfrom()`.
 
-> [!NOTE]
-> Per le prove usate `-s localhost` o `-s 127.0.0.1`. Un server legato a `INADDR_ANY` risponde dall'indirizzo principale dell'interfaccia: a una richiesta inviata a un altro indirizzo di loopback (ad esempio `127.0.1.1`, a cui su Ubuntu punta il nome della macchina in `/etc/hosts`) risponde da `127.0.0.1`, e il client rifiuta giustamente la risposta per la regola 2.
-
 ## 7. Esempi
 
 Server avviato con `server-project`, client avviato con `client-project -r ...` (quindi il server è `DEFAULT_SERVER_NAME`, cioè `localhost`). La colonna **Log server** riporta l'output del server per la stessa richiesta.
