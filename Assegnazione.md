@@ -116,6 +116,9 @@ server-project [-p port]
 | `-s` | `DEFAULT_SERVER_NAME` |
 | `-p` | `SERVER_PORT` |
 
+> [!WARNING]
+> L'opzione `-p` **non è opzionale da implementare**, né nel client né nel server: le parentesi quadre indicano solo che, se non la si passa, si usa `SERVER_PORT`. La correzione avvia il server con `-p` e una porta diversa da `SERVER_PORT`: se `-p` non è implementata, client e server non comunicano e l'esito è **negativo**.
+
 Il valore di `-s` può essere un nome di host o un indirizzo IP: il client lo risolve con `gethostbyname()`, che accetta entrambi. La riga di output del client ha la forma
 
 ```
