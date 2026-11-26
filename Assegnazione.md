@@ -5,7 +5,7 @@
 Migrare a **UDP** l'applicazione client/server del primo esonero, in cui il server è un **convertitore di unità di misura**. Il punto di partenza è la soluzione TCP che avete consegnato (da soli o in coppia): le strutture `conversion_request_t` e `conversion_response_t`, la conversione e il log del server restano gli stessi; cambiano:
 
 - il trasporto: datagrammi UDP inviati con `sendto()` e ricevuti con `recvfrom()`;
-- `-s`, che accetta un **nome** di host (es. `localhost`) oltre a un indirizzo IP, e la riga di output del client, che riporta il nome e l'indirizzo IP del server;
+- `-s`, che accetta sia un **nome** di host (es. `localhost`) sia un indirizzo IP (es. `127.0.0.1`), e la riga di output del client, che riporta il nome e l'indirizzo IP del server;
 - il client, che attende la risposta per al massimo `TIMEOUT_SEC` secondi;
 - client e server **validano i datagrammi** ricevuti (sezione 6).
 
