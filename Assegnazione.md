@@ -210,6 +210,6 @@ Con `-s 127.0.0.1` l'output del primo esempio diventa `Ricevuto risultato dal se
 - **Note**:
    - Si può lavorare da soli o in coppia; chi lavora in coppia fa una sola consegna
    - Non è necessario ricompilare il form di consegna dopo aggiornamenti al repository
-   - La pagina dei risultati si aggiorna tre volte al giorno, alle 9, alle 15 e alle 21
+   - La pagina dei risultati si aggiorna ogni ora
 
 _Ver. 0.4.0_
