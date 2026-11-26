@@ -63,7 +63,7 @@ La scelta è salvata nel workspace di Eclipse, non nel repository: in una coppia
 
 ### 4. Partire dalla soluzione TCP
 
-Possono svolgere questo esonero solo le coppie che hanno consegnato e superato il primo esonero (TCP). Il punto di partenza è la soluzione consegnata, ma **non va copiata e incollata al posto dei file di questo repository: va adattata al template UDP**. Il modo più semplice è partire dai `main.c` di questo repository e riportarci, pezzo per pezzo, il codice TCP che resta valido:
+Possono svolgere questo esonero solo gli studenti (da soli o in coppia) che hanno consegnato e superato il primo esonero (TCP). Il punto di partenza è la soluzione consegnata, ma **non va copiata e incollata al posto dei file di questo repository: va adattata al template UDP**. Il modo più semplice è partire dai `main.c` di questo repository e riportarci, pezzo per pezzo, il codice TCP che resta valido:
 - **da conservare così com'è, dal template UDP**: il blocco di `#include` iniziale (rispetto al TCP aggiunge `<sys/time.h>`, necessario per il timeout, e `socklen_t` per Windows), la funzione `clearwinsock()`, l'inizializzazione di Winsock e, nel server, `setvbuf`;
 - **da riportare dalla soluzione TCP**: la lettura degli argomenti, il parsing di `-r`, la conversione e la gestione degli errori del server, le stampe dell'output e del log. Sono le parti che non dipendono dal trasporto;
 - **da riscrivere per UDP**: creazione del socket, invio e ricezione (`sendto()`/`recvfrom()` al posto di `connect()`/`send()`/`recv()`, `listen()` e `accept()`), più le parti nuove descritte nell'[assegnazione](Assegnazione.md): risoluzione del nome, timeout, validazione dei datagrammi;
